@@ -20,13 +20,16 @@ import (
 
 // ExprIter enumerates all the equivalent expressions in the Group according to
 // the expression pattern.
+// 根据pattern枚举group中所有等价的expression
 type ExprIter struct {
 	// Group and Element solely identify a Group expression.
 	*Group
+	// 指向GroupExpr在当前遍历器中的位置
 	*list.Element
 
 	// matched indicates whether the current Group expression bound by the
 	// iterator matches the pattern after the creation or iteration.
+	// 当前的GroupExpr是否符合转换规则
 	matched bool
 
 	// Pattern describes the node of pattern tree.
@@ -174,7 +177,9 @@ func NewExprIterFromGroupElem(elem *list.Element, p *Pattern) *ExprIter {
 }
 
 // newExprIterFromGroupExpr creates the iterator on the Group expression.
+// 根据expr和pattern创建一个新的表达式迭代器
 func newExprIterFromGroupExpr(expr *GroupExpr, p *Pattern) *ExprIter {
+	// 如果子表达式的数量和子pattern的数量不一致，直接返回
 	if len(p.Children) != 0 && len(p.Children) != len(expr.Children) {
 		return nil
 	}

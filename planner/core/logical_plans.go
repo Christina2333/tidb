@@ -43,6 +43,7 @@ var (
 	_ LogicalPlan = &LogicalAggregation{}
 	_ LogicalPlan = &LogicalProjection{}
 	_ LogicalPlan = &LogicalSelection{}
+	// 子查询操作
 	_ LogicalPlan = &LogicalApply{}
 	_ LogicalPlan = &LogicalMaxOneRow{}
 	_ LogicalPlan = &LogicalTableDual{}
@@ -681,17 +682,20 @@ func (p *LogicalProjection) GetUsedCols() (usedCols []*expression.Column) {
 type LogicalAggregation struct {
 	logicalSchemaProducer
 
+	// 聚合函数信息
 	AggFuncs     []*aggregation.AggFuncDesc
 	GroupByItems []expression.Expression
 
-	// aggHints stores aggregation hint information.
+	// aggHints stores aggregation hint information. 聚合提示信息
 	aggHints aggHintInfo
-
+	// 聚合操作可能使用的属性集
 	possibleProperties [][]*expression.Column
+	// 输入行数
 	inputCount         float64 // inputCount is the input count of this plan.
 
 	// noCopPushDown indicates if planner must not push this agg down to coprocessor.
 	// It is true when the agg is in the outer child tree of apply.
+	// 是否下推
 	noCopPushDown bool
 }
 
@@ -919,13 +923,14 @@ func (la *LogicalAggregation) GetUsedCols() (usedCols []*expression.Column) {
 	return usedCols
 }
 
-// LogicalSelection represents a where or having predicate.
+// LogicalSelection represents a where or having predicate. where语句
 type LogicalSelection struct {
 	baseLogicalPlan
 
 	// Originally the WHERE or ON condition is parsed into a single expression,
 	// but after we converted to CNF(Conjunctive normal form), it can be
 	// split into a list of AND conditions.
+	// where语句需要计算的表达式，
 	Conditions []expression.Expression
 }
 

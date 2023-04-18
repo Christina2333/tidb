@@ -87,6 +87,7 @@ func (m *ExploreMark) SetUnexplored(round int) {
 }
 
 // Explored returns whether the roundth bit has been set.
+// 用于判断某个轮次是否已经被探索完
 func (m *ExploreMark) Explored(round int) bool {
 	return *m&(1<<round) != 0
 }
@@ -94,26 +95,31 @@ func (m *ExploreMark) Explored(round int) bool {
 // Group is short for expression Group, which is used to store all the
 // logically equivalent expressions. It's a set of GroupExpr.
 type Group struct {
+	// 等价的GroupExpr
 	Equivalents *list.List
 
 	FirstExpr    map[Operand]*list.Element
+	// GroupExpr指纹对应的GroupExpr
 	Fingerprints map[string]*list.Element
-
+	// 每种运算符对应的物理执行计划优化规则
 	ImplMap map[string]Implementation
+	// 列的基础信息、索引信息、统计信息、直方图等
 	Prop    *property.LogicalProperty
 
 	EngineType EngineType
-
+	// 自身的指纹
 	SelfFingerprint string
 
 	// ExploreMark is uses to mark whether this Group has been explored
 	// by a transformation rule batch in a certain round.
+	// 这个group是否已被完全探索
 	ExploreMark
 
 	// hasBuiltKeyInfo indicates whether this group has called `BuildKeyInfo`.
 	// BuildKeyInfo is lazily called when a rule needs information of
 	// unique key or maxOneRow (in LogicalProp). For each Group, we only need
 	// to collect these information once.
+	// 只有当规则需要唯一键或至多一行信息时才会被调用。只会执行一次。
 	hasBuiltKeyInfo bool
 }
 
@@ -230,10 +236,12 @@ func (g *Group) InsertImpl(prop *property.PhysicalProperty, impl Implementation)
 
 // Convert2GroupExpr converts a logical plan to a GroupExpr.
 func Convert2GroupExpr(node plannercore.LogicalPlan) *GroupExpr {
+	// 根据node创建一个空的GroupExpr
 	e := NewGroupExpr(node)
 	e.Children = make([]*Group, 0, len(node.Children()))
 	for _, child := range node.Children() {
 		childGroup := Convert2Group(child)
+		// 把childGroup追加到e.Children中
 		e.Children = append(e.Children, childGroup)
 	}
 	return e
@@ -241,7 +249,9 @@ func Convert2GroupExpr(node plannercore.LogicalPlan) *GroupExpr {
 
 // Convert2Group converts a logical plan to a Group.
 func Convert2Group(node plannercore.LogicalPlan) *Group {
+	// 生成与一个GroupExpr
 	e := Convert2GroupExpr(node)
+	// 根据这个GroupExpr生成一个Group（一个Group中只包含一个GroupExpr）
 	g := NewGroupWithSchema(e, node.Schema())
 	// Stats property for `Group` would be computed after exploration phase.
 	return g

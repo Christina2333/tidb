@@ -32,22 +32,35 @@ import (
 	"go.uber.org/zap"
 )
 
-// Column represents a column histogram.
+// Column represents a column histogram.列的直方图
 type Column struct {
+	// 直方图，用于描述某个列的值出现的频率和分布情况
 	Histogram
+	// 基于Count-Min Sketch算法的数据结构，用于估算查询条件selectivity的值
 	CMSketch   *CMSketch
+	// 用于记录数值型列中出现频率最高的前N个值及其出现的次数
 	TopN       *TopN
+	// 用于记录某个列中出现频率较低的值，用于统计查询样本中可能出现的但是未出现的数据
 	FMSketch   *FMSketch
+	// 列所属表的物理ID
 	PhysicalID int64
+	// 列的行数统计信息
 	Count      int64
+	// 列的元数据信息，包括列名、类型、注释等等
 	Info       *model.ColumnInfo
+	// 表示该列是否是Primary Key列，如果是，通常可以作为表的唯一标识
 	IsHandle   bool
+	// 运行时统计的列数据中数据不一致的比率
 	ErrorRate
+	// 列的一些特征标记，例如是否有索引等等
 	Flag           int64
+	// 当最近一次统计分析时的扫描位置，用于增量更新和定时任务
 	LastAnalyzePos types.Datum
+	// 统计信息的版本，用于维护兼容性
 	StatsVer       int64 // StatsVer is the version of the current stats, used to maintain compatibility
 
 	// StatsLoadedStatus indicates the status of column statistics
+	// 列统计信息加载的状态，用于增量加载和全量加载时的标记
 	StatsLoadedStatus
 }
 

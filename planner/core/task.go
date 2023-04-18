@@ -50,7 +50,8 @@ var (
 )
 
 // task is a new version of `PhysicalPlanInfo`. It stores cost information for a task.
-// A task may be CopTask, RootTask, MPPTaskMeta or a ParallelTask.
+// A task may be CopTask(TiKV上进行的物理执行计划), RootTask(TiDB中的物理计划), MPPTaskMeta or a ParallelTask.
+// 单个节点上不依赖于和其他节点进行数据交换即可进行的操作
 type task interface {
 	count() float64
 	copy() task

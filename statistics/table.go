@@ -104,13 +104,21 @@ const (
 )
 
 // HistColl is a collection of histogram. It collects enough information for plan to calculate the selectivity.
+// 直方图的统计信息，用于给plan计算选择率。
+// 逻辑执行计划和物理执行计划都需要selectivity。
+// 逻辑执行计划需要selectivity来选择join顺序
+// 物理执行计划需要selectivity来选择用索引还是全表扫描
 type HistColl struct {
 	PhysicalID int64
+	// 列的统计信息及直方图信息
 	Columns    map[int64]*Column
+	// 索引的统计信息及直方图信息
 	Indices    map[int64]*Index
 	// Idx2ColumnIDs maps the index id to its column ids. It's used to calculate the selectivity in planner.
+	// 索引id对应的columnId，用于计算selectivity
 	Idx2ColumnIDs map[int64][]int64
 	// ColID2IdxIDs maps the column id to a list index ids whose first column is it. It's used to calculate the selectivity in planner.
+	// columnId - 索引id，用于计算selectivity
 	ColID2IdxIDs map[int64][]int64
 	Count        int64
 	ModifyCount  int64 // Total modify count in a table.

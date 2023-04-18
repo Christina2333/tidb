@@ -316,7 +316,7 @@ func (sv *SysVar) ValidateFromType(vars *SessionVars, value string, scope ScopeF
 	case TypeUnsigned:
 		return sv.checkUInt64SystemVar(value, vars)
 	case TypeInt:
-		return sv.checkInt64SystemVar(value, vars)
+		return sv.checkInt64SystemVar(value, vars
 	case TypeBool:
 		return sv.checkBoolSystemVar(value, vars)
 	case TypeFloat:

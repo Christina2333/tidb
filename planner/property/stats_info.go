@@ -20,7 +20,7 @@ import (
 	"github.com/pingcap/tidb/statistics"
 )
 
-// GroupNDV stores the NDV of a group of columns.
+// GroupNDV stores the NDV of a group of columns.估算的多个列的唯一值
 type GroupNDV struct {
 	// Cols are the UniqueIDs of columns.
 	Cols []int64
@@ -36,15 +36,15 @@ func ToString(ndvs []GroupNDV) string {
 type StatsInfo struct {
 	RowCount float64
 
-	// Column.UniqueID -> NDV
+	// Column.UniqueID -> NDV 估算的同一列中唯一值的数量
 	ColNDVs map[int64]float64
-
+	// 直方图的统计信息
 	HistColl *statistics.HistColl
 	// StatsVersion indicates the statistics version of a table.
 	// If the StatsInfo is calculated using the pseudo statistics on a table, StatsVersion will be PseudoVersion.
 	StatsVersion uint64
 
-	// GroupNDVs stores the NDV of column groups.
+	// GroupNDVs stores the NDV of column groups. 一组列的NDV
 	GroupNDVs []GroupNDV
 }
 

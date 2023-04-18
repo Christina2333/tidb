@@ -39,38 +39,46 @@ import (
 // Plan is the description of an execution flow.
 // It is created from ast.Node first, then optimized by the optimizer,
 // finally used by the executor to create a Cursor which executes the statement.
+// 这个Plan是逻辑执行计划和物理执行计划的公共接口
+// ast.Node --> Plan --> optimizer优化 --> executor执行
 type Plan interface {
-	// Get the schema.
+	// Get the schema.获取执行计划输出的schema
 	Schema() *expression.Schema
 
 	// Get the ID.
 	ID() int
 
-	// TP get the plan type.
+	// TP get the plan type.（逻辑执行计划或物理执行计划）
 	TP() string
 
-	// Get the ID in explain statement
+	// Get the ID in explain statement.
+	// 获取执行计划在Explain语句中的id
 	ExplainID() fmt.Stringer
 
 	// ExplainInfo returns operator information to be explained.
+	// 获取执行计划在Explain中的战士信息
 	ExplainInfo() string
 
 	// replaceExprColumns replace all the column reference in the plan's expression node.
 	replaceExprColumns(replace map[string]*expression.Column)
 
+	// 获取执行计划上下文
 	SCtx() sessionctx.Context
 
 	// property.StatsInfo will return the property.StatsInfo for this plan.
+	// 获取执行计划统计信息
 	statsInfo() *property.StatsInfo
 
-	// OutputNames returns the outputting names of each column.
+	// OutputNames returns the outputting names of each column. 输出列名
 	OutputNames() types.NameSlice
 
 	// SetOutputNames sets the outputting name by the given slice.
 	SetOutputNames(names types.NameSlice)
 
+	// 获取该执行计划所在的查询块的偏移量
 	SelectBlockOffset() int
 
+	// 生成执行计划的跟踪信息
 	buildPlanTrace() *tracing.PlanTrace
 }
 
@@ -289,6 +297,8 @@ type LogicalPlan interface {
 	// DeriveStats derives statistic info for current plan node given child stats.
 	// We need selfSchema, childSchema here because it makes this method can be used in
 	// cascades planner, where LogicalPlan might not record its children or schema.
+	// 使用当前plan给定的child stats来填充derives statistic
+	// selfSchema、childSchema的数据使得这个方法可以使用在cascades的planner中，
 	DeriveStats(childStats []*property.StatsInfo, selfSchema *expression.Schema, childSchema []*expression.Schema, colGroups [][]*expression.Column) (*property.StatsInfo, error)
 
 	// ExtractColGroups extracts column groups from child operator whose DNVs are required by the current operator.
@@ -354,6 +364,7 @@ type PhysicalPlan interface {
 	GetChildReqProps(idx int) *property.PhysicalProperty
 
 	// StatsCount returns the count of property.StatsInfo for this plan.
+	// 获取Plan的统计信息SessionVar
 	StatsCount() float64
 
 	// ExtractCorrelatedCols extracts correlated columns inside the PhysicalPlan.
@@ -369,6 +380,7 @@ type PhysicalPlan interface {
 	SetChild(i int, child PhysicalPlan)
 
 	// ResolveIndices resolves the indices for columns. After doing this, the columns can evaluate the rows by their indices.
+	// 解析列索引，这样可以通过索引评估行
 	ResolveIndices() error
 
 	// Stats returns the StatsInfo of the plan.

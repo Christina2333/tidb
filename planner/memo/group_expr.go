@@ -27,19 +27,25 @@ import (
 // Children of a Group expression are expression Groups, not expressions.
 // Another property of Group expression is that the child Group references will
 // never be changed once the Group expression is created.
+// sql中具有相同语义的表达式
 type GroupExpr struct {
+	// 当前节点
 	ExprNode plannercore.LogicalPlan
+	// 当前表达式的子节点
 	Children []*Group
+	// 当前节点所属的Group
 	Group    *Group
 
 	// ExploreMark is uses to mark whether this GroupExpr has been fully
 	// explored by a transformation rule batch in a certain round.
+	// 枚举类型，表示当前表达式是否完成了全部逻辑执行计划优化规则
 	ExploreMark
-
+	// 当前表达式的唯一指纹
 	selfFingerprint string
 	// appliedRuleSet saves transformation rules which have been applied to this
 	// GroupExpr, and will not be applied again. Use `uint64` which should be the
 	// id of a Transformation instead of `Transformation` itself to avoid import cycle.
+	// 记录已经应用过的表达式转换规则
 	appliedRuleSet map[uint64]struct{}
 }
 

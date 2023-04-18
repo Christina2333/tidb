@@ -21,8 +21,11 @@ import (
 // LogicalProperty stands for logical properties such as schema of expression,
 // or statistics of columns in schema for output of Group.
 // All group expressions in a group share same logical property.
+// 一个分组中的GroupExpr使用一个LogicalProperty
 type LogicalProperty struct {
+	// 输出的统计信息，直方图信息
 	Stats     *StatsInfo
+	// column、索引信息
 	Schema    *expression.Schema
 	MaxOneRow bool
 }

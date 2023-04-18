@@ -39,7 +39,9 @@ type Optimizer struct {
 // rules and implementation rules.
 func NewOptimizer() *Optimizer {
 	return &Optimizer{
+		// 逻辑执行计划优化规则
 		transformationRuleBatches: DefaultRuleBatches,
+		// 物理执行计划优化规则
 		implementationRuleMap:     defaultImplementationMap,
 	}
 }
@@ -58,6 +60,7 @@ func (opt *Optimizer) ResetImplementationRules(rules map[memo.Operand][]Implemen
 
 // GetImplementationRules gets all the candidate implementation rules of the optimizer
 // for the logical plan node.
+// 获取物理执行计划优化规则
 func (opt *Optimizer) GetImplementationRules(node plannercore.LogicalPlan) []ImplementationRule {
 	return opt.implementationRuleMap[memo.GetOperand(node)]
 }
@@ -98,15 +101,19 @@ func (opt *Optimizer) GetImplementationRules(node plannercore.LogicalPlan) []Imp
 // memo structure is used for a group to reduce the repeated search on the same
 // required physical property.
 func (opt *Optimizer) FindBestPlan(sctx sessionctx.Context, logical plannercore.LogicalPlan) (p plannercore.PhysicalPlan, cost float64, err error) {
+	// 第一步：Preprocessing，执行一些一定会带来收益的启发式规则
 	logical, err = opt.onPhasePreprocessing(sctx, logical)
 	if err != nil {
 		return nil, 0, err
 	}
+	// Group的初始化
 	rootGroup := memo.Convert2Group(logical)
+	// 第二步：获取全部等价的GroupExpr，根据代价模型选择cost最小的执行计划
 	err = opt.onPhaseExploration(sctx, rootGroup)
 	if err != nil {
 		return nil, 0, err
 	}
+	// 第三步：获得最佳的物理执行计划
 	p, cost, err = opt.onPhaseImplementation(sctx, rootGroup)
 	if err != nil {
 		return nil, 0, err
@@ -115,6 +122,7 @@ func (opt *Optimizer) FindBestPlan(sctx sessionctx.Context, logical plannercore.
 	return p, cost, err
 }
 
+/// 启发式规则优化逻辑执行计划，目前只有列剪枝
 func (*Optimizer) onPhasePreprocessing(_ sessionctx.Context, plan plannercore.LogicalPlan) (plannercore.LogicalPlan, error) {
 	err := plan.PruneColumns(plan.Schema().Columns, nil)
 	if err != nil {
@@ -124,8 +132,10 @@ func (*Optimizer) onPhasePreprocessing(_ sessionctx.Context, plan plannercore.Lo
 }
 
 func (opt *Optimizer) onPhaseExploration(_ sessionctx.Context, g *memo.Group) error {
+	// 获取全部逻辑执行计划的转换规则
 	for round, ruleBatch := range opt.transformationRuleBatches {
 		for !g.Explored(round) {
+			// 对每个group执行执行对应的一批逻辑优化规则，应该会在g中增加或修改groupExpr
 			err := opt.exploreGroup(g, round, ruleBatch)
 			if err != nil {
 				return err
@@ -135,12 +145,14 @@ func (opt *Optimizer) onPhaseExploration(_ sessionctx.Context, g *memo.Group) er
 	return nil
 }
 
+// 对group执行ruleBatch规则，会对g进行修改和增加，round用来判断是否已经处理过这批规则
 func (opt *Optimizer) exploreGroup(g *memo.Group, round int, ruleBatch TransformationRuleBatch) error {
 	if g.Explored(round) {
 		return nil
 	}
 	g.SetExplored(round)
 
+	// 遍历g的等价GroupExpr
 	for elem := g.Equivalents.Front(); elem != nil; elem = elem.Next() {
 		curExpr := elem.Value.(*memo.GroupExpr)
 		if curExpr.Explored(round) {
@@ -157,6 +169,7 @@ func (opt *Optimizer) exploreGroup(g *memo.Group, round int, ruleBatch Transform
 			}
 		}
 
+		// 应用规则
 		eraseCur, err := opt.findMoreEquiv(g, elem, round, ruleBatch)
 		if err != nil {
 			return err
@@ -168,10 +181,13 @@ func (opt *Optimizer) exploreGroup(g *memo.Group, round int, ruleBatch Transform
 	return nil
 }
 
+// 在搜索空间中查找更多的等价节点
+// g: 当前group，elem：当前节点
 // findMoreEquiv finds and applies the matched transformation rules.
 func (*Optimizer) findMoreEquiv(g *memo.Group, elem *list.Element, round int, ruleBatch TransformationRuleBatch) (eraseCur bool, err error) {
 	expr := elem.Value.(*memo.GroupExpr)
 	operand := memo.GetOperand(expr.ExprNode)
+	// 根据当前节点类型找到需要执行的优化规则
 	for _, rule := range ruleBatch[operand] {
 		pattern := rule.GetPattern()
 		if !pattern.Operand.Match(operand) {
@@ -179,12 +195,14 @@ func (*Optimizer) findMoreEquiv(g *memo.Group, elem *list.Element, round int, ru
 		}
 		// Create a binding of the current Group expression and the pattern of
 		// the transformation rule to enumerate all the possible expressions.
+		// 将当前的Group表达式与规则的pattern绑定在一起，以列举所有可能表达式 todo 没看懂
 		iter := memo.NewExprIterFromGroupElem(elem, pattern)
 		for ; iter != nil && iter.Matched(); iter.Next() {
 			if !rule.Match(iter) {
 				continue
 			}
 
+			// 执行规则得到的新GroupExpr
 			newExprs, eraseOld, eraseAll, err := rule.OnTransform(iter)
 			if err != nil {
 				return false, err
@@ -192,6 +210,7 @@ func (*Optimizer) findMoreEquiv(g *memo.Group, elem *list.Element, round int, ru
 
 			if eraseAll {
 				g.DeleteAll()
+				// 把新的GroupExpr加入到group中
 				for _, e := range newExprs {
 					g.Insert(e)
 				}
@@ -216,12 +235,15 @@ func (*Optimizer) findMoreEquiv(g *memo.Group, elem *list.Element, round int, ru
 }
 
 // fillGroupStats computes Stats property for each Group recursively.
+// 递归计算每个Group的统计信息
 func (opt *Optimizer) fillGroupStats(g *memo.Group) (err error) {
+	// 如果统计信息已存在，直接返回
 	if g.Prop.Stats != nil {
 		return nil
 	}
 	// All GroupExpr in a Group should share same LogicalProperty, so just use
 	// first one to compute Stats property.
+	// 一个Group中的GroupExpr共享同一个LogicalProperty，
 	elem := g.Equivalents.Front()
 	expr := elem.Value.(*memo.GroupExpr)
 	childStats := make([]*property.StatsInfo, len(expr.Children))
@@ -264,6 +286,7 @@ func (opt *Optimizer) onPhaseImplementation(_ sessionctx.Context, g *memo.Group)
 // reqPhysProp: the required physical property.
 // costLimit:   the maximum cost of all the Implementations.
 func (opt *Optimizer) implGroup(g *memo.Group, reqPhysProp *property.PhysicalProperty, costLimit float64) (memo.Implementation, error) {
+	// 从Group的缓存中获取reqPhysProp对应的物理执行计划（Implementation）
 	groupImpl := g.GetImpl(reqPhysProp)
 	if groupImpl != nil {
 		if groupImpl.GetCost() <= costLimit {
@@ -273,20 +296,27 @@ func (opt *Optimizer) implGroup(g *memo.Group, reqPhysProp *property.PhysicalPro
 	}
 	// Handle implementation rules for each equivalent GroupExpr.
 	var childImpls []memo.Implementation
+	// 填充Group的统计信息
 	err := opt.fillGroupStats(g)
 	if err != nil {
 		return nil, err
 	}
 	outCount := math.Min(g.Prop.Stats.RowCount, reqPhysProp.ExpectedCnt)
+	// 遍历g中的每个等价的GroupExpr，递归计算cost，同时更新costLimit
 	for elem := g.Equivalents.Front(); elem != nil; elem = elem.Next() {
+		// 把Value强转为(*memo.GroupExpr)结构，失败时会panic
 		curExpr := elem.Value.(*memo.GroupExpr)
+		// 获取GroupExpr对应的物理执行计划
 		impls, err := opt.implGroupExpr(curExpr, reqPhysProp)
 		if err != nil {
 			return nil, err
 		}
+		// 递归计算每个物理执行计划的Children的cost
 		for _, impl := range impls {
+			// 每次循环清空curExpr中Children的物理执行计划
 			childImpls = childImpls[:0]
 			for i, childGroup := range curExpr.Children {
+				// 对于每个childGroup，计算
 				childImpl, err := opt.implGroup(childGroup, impl.GetPlan().GetChildReqProps(i), impl.GetCostLimit(costLimit, childImpls...))
 				if err != nil {
 					return nil, err
@@ -311,6 +341,7 @@ func (opt *Optimizer) implGroup(g *memo.Group, reqPhysProp *property.PhysicalPro
 		}
 	}
 	// Handle enforcer rules for required physical property.
+	// 分别计算符合reqPhysProp条件的物理执行计划的cost
 	for _, rule := range GetEnforcerRules(g, reqPhysProp) {
 		newReqPhysProp := rule.NewProperty(reqPhysProp)
 		enforceCost := rule.GetEnforceCost(g)
@@ -332,6 +363,7 @@ func (opt *Optimizer) implGroup(g *memo.Group, reqPhysProp *property.PhysicalPro
 	if groupImpl == nil || groupImpl.GetCost() == math.MaxFloat64 {
 		return nil, nil
 	}
+	// 把得到的结果放入Group的缓存中
 	g.InsertImpl(reqPhysProp, groupImpl)
 	return groupImpl, nil
 }

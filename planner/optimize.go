@@ -464,6 +464,7 @@ func optimize(ctx context.Context, sctx sessionctx.Context, node ast.Node, is in
 	}
 
 	beginOpt := time.Now()
+	// 执行计划优化
 	finalPlan, cost, err := core.DoOptimize(ctx, sctx, builder.GetOptFlag(), logic)
 	// TODO: capture plan replayer here if it matches sql and plan digest
 

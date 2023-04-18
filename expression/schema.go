@@ -45,9 +45,11 @@ func (ki KeyInfo) String() string {
 // Schema stands for the row schema and unique key information get from input.
 type Schema struct {
 	Columns []*Column
+	// 索引
 	Keys    []KeyInfo
 	// UniqueKeys stores those unique indexes that allow null values, but Keys does not allow null values.
 	// since equivalence conditions can filter out null values, in this case a unique index with null values can be a Key.
+	// 存储允许有null值的唯一索引
 	UniqueKeys []KeyInfo
 }
 

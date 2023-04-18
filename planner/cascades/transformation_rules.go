@@ -32,6 +32,7 @@ import (
 )
 
 // Transformation defines the interface for the transformation rules.
+// 逻辑执行计划的优化规则
 type Transformation interface {
 	// GetPattern gets the cached pattern of the rule.
 	GetPattern() *memo.Pattern
@@ -57,8 +58,11 @@ type TransformationRuleBatch map[memo.Operand][]Transformation
 
 // DefaultRuleBatches contain all the transformation rules.
 // Each batch will be applied to the memo independently.
+// 逻辑执行计划优化规则
 var DefaultRuleBatches = []TransformationRuleBatch{
+	// TiDB层的优化规则
 	TiDBLayerOptimizationBatch,
+	// TiKV层的优化规则
 	TiKVLayerOptimizationBatch,
 	PostTransformationBatch,
 }
@@ -537,6 +541,7 @@ func NewRulePushSelDownProjection() Transformation {
 // 1. `projection -> selection -> x` or
 // 2. `selection -> projection -> selection -> x` or
 // 3. just keep unchanged.
+// https://cn.pingcap.com/blog/10mins-become-contributor-20191126 这里有一个例子来参考
 func (*PushSelDownProjection) OnTransform(old *memo.ExprIter) (newExprs []*memo.GroupExpr, eraseOld bool, eraseAll bool, err error) {
 	sel := old.GetExpr().ExprNode.(*plannercore.LogicalSelection)
 	proj := old.Children[0].GetExpr().ExprNode.(*plannercore.LogicalProjection)

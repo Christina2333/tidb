@@ -82,7 +82,7 @@ const (
 	flagJoinReOrder
 	flagPrunColumnsAgain
 )
-
+// tidb支持的逻辑优化规则
 var optRuleList = []logicalOptRule{
 	&gcSubstituter{},
 	&columnPruner{},
@@ -291,6 +291,7 @@ func DoOptimize(ctx context.Context, sctx sessionctx.Context, flag uint64, logic
 	}
 	flag |= flagCollectPredicateColumnsPoint
 	flag |= flagSyncWaitStatsLoadPoint
+	// 逻辑优化
 	logic, err := logicalOptimize(ctx, flag, logic)
 	if err != nil {
 		return nil, 0, err
@@ -302,6 +303,7 @@ func DoOptimize(ctx context.Context, sctx sessionctx.Context, flag uint64, logic
 	if planCounter == 0 {
 		planCounter = -1
 	}
+	// 物理优化
 	physical, cost, err := physicalOptimize(logic, &planCounter)
 	if err != nil {
 		return nil, 0, err

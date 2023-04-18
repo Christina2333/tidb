@@ -34,9 +34,11 @@ import (
 )
 
 // AggFuncDesc describes an aggregation function signature, only used in planner.
+// 表示聚合函数
 type AggFuncDesc struct {
+	// 基本函数对象，包含名称、参数信息
 	baseFuncDesc
-	// Mode represents the execution mode of the aggregation function.
+	// Mode represents the execution mode of the aggregation function. 聚合函数模式
 	Mode AggFunctionMode
 	// HasDistinct represents whether the aggregation function contains distinct attribute.
 	HasDistinct bool

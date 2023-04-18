@@ -136,6 +136,7 @@ func (o Operand) Match(t Operand) bool {
 // defined by an Operand and EngineType pair.
 type Pattern struct {
 	Operand
+	// 因为TIDB有TiKv和TiFlash两个存储引擎，有些操作只能在特定引擎上操作，这个字段用于标识这种引擎
 	EngineTypeSet
 	Children []*Pattern
 }
